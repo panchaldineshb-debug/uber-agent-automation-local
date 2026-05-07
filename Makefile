@@ -1,14 +1,21 @@
-.PHONY: help install local-dev setup load unload reload logs status clean 
+.PHONY: help install local-dev setup load unload reload status clean 
+.PHONY: uber-login uber-run uber-persistent
 .PHONY: check check-twilio check-launchctl
 .PHONY: seed-secrets
 .PHONY: test
+.PHONY: logs
 
-# Variables
+# Python environment and paths
 VENV := .venv
+PYTHON=python3
+PIP := pip3
+
+# Modern launchd domain
 SERVICE_NAME=com.sarabilabs.rideagent
 PLIST_FILENAME=$(SERVICE_NAME).plist
 PLIST_DEST=$(HOME)/Library/LaunchAgents/$(PLIST_FILENAME)
-PYTHON=python3
+
+# Logs
 WORKER=agents/local_worker.py
 LOG_DIR=logs
 
@@ -19,6 +26,10 @@ DOMAIN=gui/$(USER_ID)
 # UV Path Detection
 UV_PYTHON=$(shell uv run which python)
 
+
+AUTH_FILE := auth/uber_state.json
+
+.DEFAULT_GOAL := help
 
 help: ## Show this help message
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | sort | awk 'BEGIN {FS = ":.*?## "}; {printf "\033[36m%-15s\033[0m %s\n", $$1, $$2}'
@@ -116,6 +127,29 @@ check-launchctl: ## Dry run of the launchd configuration
 	@ls $(UV_PYTHON) > /dev/null && echo "✅ Python path valid"
 	@ls $(CURDIR)/$(WORKER) > /dev/null && echo "✅ Worker script valid"
 
+check-session:
+	@echo "🔍 Testing plist syntax..."
+	@plutil -lint $(PLIST_FILENAME)
+	@echo "🔍 Testing Uber session validity..."
+	uv run python scripts/check_session.py
+
+# =========================
+# Uber Authentication
+# =========================
+
+uber-login:
+	uv run python  scripts/uber_login.py
+
+uber-run:
+	uv run python  scripts/use_uber_session.py
+
+uber-persistent:
+	uv run python  scripts/persistent_profile.py
+
+
+# =========================
+# Logs
+# =========================
 logs: ## Tail the service logs
 	tail $(LOG_DIR)/stdout.log
 
