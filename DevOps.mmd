@@ -1,0 +1,7 @@
+graph LR
+    A[Code Change] --> B[Pytest]
+    B --> C[Restart Local Process]
+    subgraph Reliability
+        C --> D[Log Rotation: /var/log/ride-agent.log]
+        D --> E[Monitoring: Check process alive]
+    end

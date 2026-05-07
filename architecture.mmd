@@ -1,0 +1,12 @@
+graph TD
+    A[Son's Email] -->|Sent to| B(panchaldineshb@gmail.com)
+    
+    subgraph Mac_M4_Orchestrator [Local Mac M4 Environment]
+        D[Python Worker: GmailWatcher] -->|IMAP Polling| B
+        D -->|New Email Found| E[Agent: Intent Recognition]
+        E -->|Call| F[Skill: Email Parser]
+        F -->|Return Time| E
+        E -->|If Valid| G[Skill: Uber API]
+        G -->|Action| H((Uber Sandbox))
+        E -->|Optional| I[Ollama: Local LLM Validation]
+    end
