@@ -91,7 +91,7 @@ seed-secrets: ## Interactively set Google, Twilio, and Contact secrets
 	read -p "Enter Twilio SID: " t_sid; \
 	read -p "Enter Twilio Auth Token: " t_token; \
 	read -p "Enter Twilio Phone Number: " t_phone; \
-	read -p "Enter Son's Phone Number: " s_phone; \
+	read -p "Enter Sameer's Phone Number: " s_phone; \
 	uv run python -c "\
 import keyring; s='SarabiLabs_Uber_Automator'; \
 pairs = [('google_client_id','$$g_id'),('google_client_secret','$$g_secret'),('gmail_app_password','$$g_app_pass'),('twilio_sid','$$t_sid'),('twilio_token','$$t_token'),('twilio_phone','$$t_phone'),('son_phone','$$s_phone')]; \

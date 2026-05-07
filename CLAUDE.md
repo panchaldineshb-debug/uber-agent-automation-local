@@ -1,6 +1,6 @@
 # Uber Agent Automation — Local-First Mac
 
-My son Sameer needs Uber ride from school everyday either at 2:35 or 4 PM EST (Inside JP Steven School, Edison, NJ 08820), what can he do by sending email so that claude code skills and agents can help him, be simple, honest and highly technical.
+My son Sameer needs Uber ride from his school everyday either at 2:35 or 4 PM EST (Inside JP Steven School, Edison, NJ 08820), what can he do by sending email so that claude code skills and agents can help him, be simple, honest and highly technical.
 
 Polls Gmail for ride-request emails from a designated sender, parses the intended ride time, calls the Uber API, and sends SMS + macOS notifications.
 

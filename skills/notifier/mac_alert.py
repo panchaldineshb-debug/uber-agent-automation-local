@@ -8,4 +8,4 @@ class MacNotifier:
         subprocess.run(["osascript", "-e", script])
 
 # Usage
-# MacNotifier.notify_admin("SarabiLabs", "Son's Uber has been booked successfully!")
+# MacNotifier.notify_admin("SarabiLabs", "Sameer's Uber has been booked successfully!")
