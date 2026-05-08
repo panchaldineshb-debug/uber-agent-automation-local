@@ -1,4 +1,8 @@
 from playwright.sync_api import sync_playwright
+import requests
+import os
+
+OLLLAMA_API_BASE = os.getenv("OLLLAMA_API_BASE", "http://localhost:11434")
 
 with sync_playwright() as p:
     browser = p.chromium.launch(
@@ -17,6 +21,13 @@ with sync_playwright() as p:
     )
 
     print("Uber session restored successfully")
+
+    # Send a POST request to the Ollama API
+    response = requests.post(f"{OLLLAMA_API_BASE}/some_endpoint", json={"key": "value"})
+    if response.status_code == 200:
+        print("POST request to Ollama API successful")
+    else:
+        print(f"POST request to Ollama API failed with status code {response.status_code}")
 
     input("\nPress ENTER to close browser...\n")
 
