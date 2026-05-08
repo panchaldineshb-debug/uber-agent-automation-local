@@ -42,15 +42,15 @@ def process_ride_intent(body):
 
 
 def poll_and_process():
-    # 1. PRE-FLIGHT CHECK: Verify Uber session is alive
-    # We use asyncio.run because this is a synchronous loop calling an async check
-    if not asyncio.run(is_session_valid()):
-        print("[CRITICAL] Uber session expired. Skipping poll to avoid failure.")
-        MacNotifier.notify_admin("SarabiLabs", "Action Required: Run 'make auth' to refresh Uber login.")
-        return # Exit this poll cycle early
+    # PRE-FLIGHT: warn if Uber session looks expired, but don't block email polling
+    try:
+        if not asyncio.run(is_session_valid()):
+            print("[WARN] Uber session may be expired. Run 'make auth' to refresh.")
+            MacNotifier.notify_admin("SarabiLabs", "Action Required: Run 'make auth' to refresh Uber login.")
+    except Exception as e:
+        print(f"[WARN] Session check failed ({e}), continuing poll.")
 
     try:
-        # 2. GMAIL OPERATION (only if session is valid)
         mail = imaplib.IMAP4_SSL("imap.gmail.com")
         mail.login(GMAIL_USER, GMAIL_PASS)
         mail.select("inbox")

@@ -48,7 +48,7 @@ setup: ## Generate the launchd plist using the UV virtualenv path
 		<string>$(SERVICE_NAME)</string>\n\
 		<key>ProgramArguments</key>\n\
 		<array>\n\
-			<string>$(shell which $(PYTHON))</string>\n\
+			<string>$(UV_PYTHON)</string>\n\
 			<string>$(CURDIR)/$(WORKER)</string>\n\
 		</array>\n\
 		<key>RunAtLoad</key>\n\
@@ -65,6 +65,8 @@ setup: ## Generate the launchd plist using the UV virtualenv path
 		<dict>\n\
 			<key>PYTHONUNBUFFERED</key>\n\
 			<string>1</string>\n\
+			<key>PYTHONPATH</key>\n\
+			<string>$(CURDIR)</string>\n\
 		</dict>\n\
 	</dict>\n\
 	</plist>\n' > $(PLIST_DEST)
