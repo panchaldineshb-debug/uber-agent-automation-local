@@ -10,12 +10,62 @@ Runs as a macOS `launchd` service on an M4 Mac.
 ## Architecture
 
 ```
-agents/local_worker.py       # Main polling loop (IMAP → skills → notify)
-skills/email_parser/         # Extracts ride time from email body
-skills/ride_request/         # Wraps Uber API call
-skills/gmail_auth/           # Google OAuth token handling
-skills/notifier/             # Twilio SMS + macOS native alerts
-scripts/auth_setup.py        # One-time OAuth browser handshake
+uber-agent-automation-local/
+│
+├── Core Config / Infra
+│   ├── .env
+│   ├── pyproject.toml
+│   ├── requirements.txt
+│   ├── uv.lock
+│   ├── Makefile
+│   ├── .python-version
+│   ├── client_secrets.json
+│   ├── com.sarabilabs.rideagent.plist
+│   └── config/
+│       └── uber_state.json
+│
+├── Agent Layer
+│   └── agents/
+│       └── local_worker.py   ← MAIN ORCHESTRATOR (critical file)
+│
+├── Skills Layer
+│   ├── skills/
+│   │   ├── email_parser/
+│   │   │   └── handler.py
+│   │   ├── ride_request/
+│   │   │   ├── handler.py
+│   │   │   └── SKILL.md
+│   │   ├── notifier/
+│   │   │   ├── handler.py
+│   │   │   └── mac_alert.py
+│   │   ├── email_reply/
+│   │   │   └── handler.py
+│   │   ├── gmail_auth/
+│   │   │   └── handler.py
+│
+├── Scripts / Ops Tools
+│   ├── scripts/
+│   │   ├── uber_login.py
+│   │   ├── use_uber_session.py
+│   │   ├── auth_setup.py
+│   │   └── check_session.py
+│
+├── Observability (minimal)
+│   └── logs/
+│       ├── stdout.log
+│       └── stderr.log
+│
+├── Docs / Architecture
+│   ├── README.md
+│   ├── CLAUDE.md
+│   ├── CLAUDE.template.md
+│   ├── architecture.mmd
+│   ├── DevOps.mmd
+│   ├── SAMPLE_EMAIL.md
+│   └── FILES.md
+│
+└── Runtime state
+    └── config/uber_state.json
 ```
 
 ## Commands

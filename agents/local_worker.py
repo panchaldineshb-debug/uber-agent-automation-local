@@ -9,6 +9,10 @@ from skills.email_reply.handler import send_confirmation
 
 import keyring
 
+import asyncio  # Added for Playwright async support
+from scripts.check_session import is_session_valid  # Import your check
+
+
 SERVICE = "SarabiLabs_Uber_Automator"
 GMAIL_USER = "panchaldineshb@gmail.com"
 GMAIL_PASS = keyring.get_password(SERVICE, "gmail_app_password")
@@ -38,7 +42,15 @@ def process_ride_intent(body):
 
 
 def poll_and_process():
+    # 1. PRE-FLIGHT CHECK: Verify Uber session is alive
+    # We use asyncio.run because this is a synchronous loop calling an async check
+    if not asyncio.run(is_session_valid()):
+        print("[CRITICAL] Uber session expired. Skipping poll to avoid failure.")
+        MacNotifier.notify_admin("SarabiLabs", "Action Required: Run 'make auth' to refresh Uber login.")
+        return # Exit this poll cycle early
+
     try:
+        # 2. GMAIL OPERATION (only if session is valid)
         mail = imaplib.IMAP4_SSL("imap.gmail.com")
         mail.login(GMAIL_USER, GMAIL_PASS)
         mail.select("inbox")
