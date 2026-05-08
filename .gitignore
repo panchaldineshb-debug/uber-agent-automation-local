@@ -11,3 +11,4 @@ wheels/
 *.json
 .aider*
 .env
+folders.txt
