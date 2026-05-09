@@ -15,12 +15,20 @@ class UberSkill:
             "start_longitude": long,
             "end_latitude": 40.523,  # Home Latitude
             "end_longitude": -74.343,  # Home Longitude
+            "pickup_datetime": pickup_time.isoformat() + "+00:00"
         }
         # In actual production, you'd use 'scheduled_rides' endpoint
         # For simple automation, we trigger the request at the time
-        return requests.post(
+        response = requests.post(
             endpoint, json=payload, headers={"Authorization": f"Bearer {self.token}"}
         )
+        
+        if response.status_code == 201:
+            print("✅ Ride requested successfully.")
+            return True
+        else:
+            print(f"❌ Failed to request ride: {response.text}")
+            return False
 
     def request_confirm(self, pickup_time, lat, long):
         # Your implementation here

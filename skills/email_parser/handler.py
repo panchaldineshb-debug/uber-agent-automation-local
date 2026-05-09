@@ -1,6 +1,6 @@
 import email
 import re
-from datetime import datetime
+from datetime import datetime, timedelta
 
 class EmailParser:
     @staticmethod
@@ -13,11 +13,15 @@ class EmailParser:
             return None
             
         time_str = match.group(0).upper()
-        # Logic to convert '2:35' or '4' to full timestamp
-        # Simplified for 2:35/4 PM specifically:
-        hour = 14 if "2:35" in time_str else 16
-        minute = 35 if "2:35" in time_str else 0
-        
+        # Convert '2:35' or '4' to full timestamp
+        hour, minute = map(int, re.findall(r'\d+', time_str))
+        period = time_str.split()[-1] if len(time_str.split()) > 1 else ""
+
+        if period == "PM" and hour != 12:
+            hour += 12
+        elif period == "AM" and hour == 12:
+            hour = 0
+
         return datetime.now().replace(hour=hour, minute=minute, second=0, microsecond=0)
 
     @staticmethod

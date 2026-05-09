@@ -31,14 +31,17 @@ def process_ride_intent(body):
         ride_time_str = ride_time.strftime("%I:%M %p")
 
         uber = UberSkill()
-        uber.request_ride(ride_time, 40.518, -74.412)
+        success = uber.request_ride(ride_time, 40.518, -74.412)
 
-        send_confirmation(SON_EMAIL, ride_time_str)
-        sms_notifier.send_confirmation(
-            SON_PHONE,
-            f"Uber booked for {ride_time_str}. Check your email for driver details.",
-        )
-        MacNotifier.notify_admin("SarabiLabs", f"Uber booked for {ride_time_str}")
+        if success:
+            send_confirmation(SON_EMAIL, ride_time_str)
+            sms_notifier.send_confirmation(
+                SON_PHONE,
+                f"Uber booked for {ride_time_str}. Check your email for driver details.",
+            )
+            MacNotifier.notify_admin("SarabiLabs", f"Uber booked for {ride_time_str}")
+        else:
+            print(f"Failed to book Uber ride for {ride_time_str}.")
 
 
 def poll_and_process():
