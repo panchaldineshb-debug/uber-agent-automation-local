@@ -1,4 +1,4 @@
-.PHONY: help install local-dev setup load unload reload status clean 
+.PHONY: help install local-dev setup load unload reload status clean auth auth-init
 .PHONY: uber-login uber-run uber-persistent
 .PHONY: check check-twilio check-launchctl
 .PHONY: seed-secrets
