@@ -157,7 +157,7 @@ logs: ## Tail the service logs
 	tail $(LOG_DIR)/stdout.log
 
 test: ## Run pytest suite
-	$(PYTHON) -m pytest tests/
+	uv run pytest tests/ -v
 
 clean: unload ## Remove logs and local plist
 	rm -rf $(LOG_DIR)/*.log
