@@ -13,8 +13,7 @@ class sms_notifier:
         from_number = keyring.get_password(cls.SERVICE_NAME, "twilio_phone")
 
         if not all([account_sid, auth_token, from_number]):
-            print("Error: Twilio credentials missing in Keychain.")
-            return
+            raise RuntimeError("Twilio credentials missing in Keychain. Run 'make seed-secrets'.")
 
         client = Client(account_sid, auth_token)
         message = client.messages.create(

@@ -37,12 +37,10 @@ def test_sms_notifier_sends_with_valid_credentials():
     assert result == "SM123"
 
 
-def test_sms_notifier_returns_none_when_credentials_missing(capsys):
+def test_sms_notifier_raises_when_credentials_missing():
     from skills.notifier.handler import sms_notifier
+    import pytest
 
     with patch("keyring.get_password", return_value=None):
-        result = sms_notifier.send_confirmation("+18483099176", "Test")
-
-    assert result is None
-    captured = capsys.readouterr()
-    assert "missing" in captured.out.lower()
+        with pytest.raises(RuntimeError, match="Twilio credentials missing"):
+            sms_notifier.send_confirmation("+18483099176", "Test")

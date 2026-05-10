@@ -35,13 +35,10 @@ class UberSkill:
             return False
 
     def request_confirm(self, pickup_time, lat, long):
-        # Your implementation here
-        pass
+        raise NotImplementedError
 
     def request_cancel(self, request_id):
-        # Your implementation here
-        pass
+        raise NotImplementedError
 
     def request_message(self, request_id, message):
-        # Your implementation here
-        pass
+        raise NotImplementedError

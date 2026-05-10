@@ -14,6 +14,7 @@ from skills.ride_request.handler import UberSkill
 from skills.notifier.handler import sms_notifier
 from skills.notifier.mac_alert import MacNotifier
 from skills.email_reply.handler import send_confirmation
+from skills.gmail_precheck.handler import check_gmail_available
 
 
 class UberAgent:
@@ -31,8 +32,7 @@ class UberAgent:
         ride_time = EmailParser.extract_time(body)
 
         if not ride_time:
-            print("[DEBUG] No valid ride time found in email body.")
-            return
+            raise RuntimeError(f"No valid ride time found in email body: {body[:100]!r}")
 
         ride_time_str = ride_time.strftime("%I:%M %p")
 
@@ -52,6 +52,15 @@ class UberAgent:
         else:
             # This raise will be caught by @sarabilabs_monitor and email you
             raise RuntimeError(f"Uber API failed to confirm ride for {ride_time_str}")
+
+    def check_gmail_health(self):
+        """Pre-check: verify Gmail OAuth token and API reachability."""
+        if not check_gmail_available():
+            msg = "Gmail API unavailable. Re-run 'make auth'."
+            print(f"[WARN] {msg}")
+            MacNotifier.notify_admin("SarabiLabs", msg)
+            return False
+        return True
 
     def check_uber_health(self):
         """Pre-flight check: warn if session is stale."""
@@ -96,8 +105,11 @@ def run_agent():
     agent = UberAgent()
 
     while True:
-        # 1. Health Check
+        # 1. Health Checks
         agent.check_uber_health()
+        if not agent.check_gmail_health():
+            time.sleep(300)
+            continue
 
         # 2. Poll and Process
         agent.poll_gmail()
