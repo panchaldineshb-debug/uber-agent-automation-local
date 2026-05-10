@@ -20,6 +20,8 @@ def send_confirmation(to_address: str, ride_time_str: str):
     driver, car, plate = random.choice(_DRIVERS)
     gmail_user = "panchaldineshb@gmail.com"
     gmail_pass = keyring.get_password(SERVICE, "gmail_app_password")
+    if gmail_pass is None:
+        raise RuntimeError("Gmail app password not found in keyring")
 
     body = f"""Hi Sameer,
 

@@ -14,3 +14,28 @@ wheels/
 folders.txt
 .DS_Store
 logs/
+
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+
+# Env
+.env
+.env.*
+!.env.example
+
+# Logs
+logs/
+*.log
+
+# OS
+.DS_Store
+
+# IDE
+.vscode/
+.idea/
+
+# Playwright
+playwright/.cache/
