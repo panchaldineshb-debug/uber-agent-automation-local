@@ -15,16 +15,19 @@ from scripts.check_session import is_session_valid  # Import your check
 
 SERVICE = "SarabiLabs_Uber_Automator"
 GMAIL_USER = "panchaldineshb@gmail.com"
-GMAIL_PASS = keyring.get_password(SERVICE, "gmail_app_password")
 SON_EMAIL = "3016203@edison.k12.nj.us"
+
+
+GMAIL_PASS = keyring.get_password(SERVICE, "gmail_app_password")
+if GMAIL_PASS is None:
+    raise RuntimeError("Gmail app password not found in keyring")
 
 
 def process_ride_intent(body):
     SON_PHONE = keyring.get_password(SERVICE, "son_phone")
 
     if not SON_PHONE:
-        print("Error: SON_PHONE not found in Keychain. Run 'make seed-secrets'.")
-        return
+        raise RuntimeError("SON_PHONE not found in Keychain. Run 'make seed-secrets'.")
 
     ride_time = EmailParser.extract_time(body)
     if ride_time:
@@ -49,7 +52,9 @@ def poll_and_process():
     try:
         if not asyncio.run(is_session_valid()):
             print("[WARN] Uber session may be expired. Run 'make auth' to refresh.")
-            MacNotifier.notify_admin("SarabiLabs", "Action Required: Run 'make auth' to refresh Uber login.")
+            MacNotifier.notify_admin(
+                "SarabiLabs", "Action Required: Run 'make auth' to refresh Uber login."
+            )
     except Exception as e:
         print(f"[WARN] Session check failed ({e}), continuing poll.")
 
