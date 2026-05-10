@@ -39,3 +39,6 @@ logs/
 
 # Playwright
 playwright/.cache/
+
+# Uber session state (sensitive — contains post-auth cookies)
+config/uber_state.json
