@@ -1,10 +1,14 @@
 import requests
-import os
+import keyring
 
 
 class UberSkill:
+    SERVICE_NAME = "SarabiLabs_Uber_Automator"
+
     def __init__(self):
-        self.token = os.getenv("UBER_SERVER_TOKEN")
+        self.token = keyring.get_password(self.SERVICE_NAME, "uber_server_token")
+        if self.token is None:
+            raise RuntimeError("Keychain entry 'SarabiLabs_Uber_Automator/uber_server_token' not found. Run 'make seed-secrets'.")
         self.base_url = "https://sandbox-api.uber.com/v1.2"
 
     def request_ride(self, pickup_time, lat, long):

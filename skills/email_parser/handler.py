@@ -13,8 +13,9 @@ class EmailParser:
             return None
             
         time_str = match.group(0).upper()
-        # Convert '2:35' or '4' to full timestamp
-        hour, minute = map(int, re.findall(r'\d+', time_str))
+        numbers = re.findall(r'\d+', time_str)
+        hour = int(numbers[0])
+        minute = int(numbers[1]) if len(numbers) > 1 else 0
         period = time_str.split()[-1] if len(time_str.split()) > 1 else ""
 
         if period == "PM" and hour != 12:

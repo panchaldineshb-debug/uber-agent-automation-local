@@ -4,12 +4,11 @@ My son Sameer needs Uber ride from his school everyday either at 2:35 or 4 PM ES
 
 Polls Gmail for ride-request emails from a designated sender, parses the intended ride time, calls the Uber API, and sends SMS + macOS notifications.
 
-Runs as a macOS `launchd` service on an M4 Mac.
-
+Runs as a macOS \`launchd\` service on an M4 Mac.
 
 ## Architecture
 
-```
+\`\`\`
 uber-agent-automation-local/
 │
 ├── Core Config / Infra
@@ -21,8 +20,11 @@ uber-agent-automation-local/
 │   ├── .python-version
 │   ├── client_secrets.json
 │   ├── com.sarabilabs.rideagent.plist
-│   └── config/
-│       └── uber_state.json
+│   └── core/
+│       ├── __init__.py
+│       ├── settings.py
+│       ├── logger.py
+│       └── monitoring.py
 │
 ├── Agent Layer
 │   └── agents/
@@ -55,49 +57,41 @@ uber-agent-automation-local/
 │       ├── stdout.log
 │       └── stderr.log
 │
-├── Docs / Architecture
-│   ├── README.md
-│   ├── CLAUDE.md
-│   ├── CLAUDE.template.md
-│   ├── architecture.mmd
-│   ├── DevOps.mmd
-│   ├── SAMPLE_EMAIL.md
-│   └── FILES.md
-│
 └── Runtime state
-    └── config/uber_state.json
-```
+    └── config/
+        └── uber_state.json
+\`\`\`
 
 ## Commands
 
 | Task | Command |
 |------|---------|
-| Run worker (dev) | `python3 -m agents.local_worker` |
-| Run with uv | `uv run python agents/local_worker.py` |
-| One-time OAuth setup | `make auth-init` |
-| Seed secrets to Keychain | `make seed-secrets` |
-| Install as launchd service | `make setup && make load` |
-| Restart service | `make reload` |
-| Check service status | `make status` |
-| Tail logs | `make logs` |
-| Run tests | `make test` |
+| Run worker (dev) | \`python3 -m agents.local_worker\` |
+| Run with uv | \`uv run python agents/local_worker.py\` |
+| One-time OAuth setup | \`make auth-init\` |
+| Seed secrets to Keychain | \`make seed-secrets\` |
+| Install as launchd service | \`make setup && make load\` |
+| Restart service | \`make reload\` |
+| Check service status | \`make status\` |
+| Tail logs | \`make logs\` |
+| Run tests | \`make test\` |
 
 ## Secrets & Auth
 
-All secrets live in **macOS Keychain** under service name `SarabiLabs_Uber_Automator`. Keys: `google_client_id`, `google_client_secret`, `gmail_app_password`, `twilio_sid`, `twilio_token`, `twilio_phone`, `son_phone`. Seed them with `make seed-secrets`. Never store secrets in `.env` or code.
+All secrets live in **macOS Keychain** under service name \`SarabiLabs_Uber_Automator\`. Keys: \`google_client_id\`, \`google_client_secret\`, \`gmail_app_password\`, \`twilio_sid\`, \`twilio_token\`, \`twilio_phone\`, \`son_phone\`, \`uber_server_token\`. Seed them with \`make seed-secrets\`. Never store secrets in \`.env\` or code.
 
-Google OAuth tokens are written to disk by `scripts/auth_setup.py` (one-time browser flow). The worker reads them at startup via `skills/gmail_auth/handler.py`.
+Google OAuth tokens are written to disk by \`scripts/auth_setup.py\` (one-time browser flow). The worker reads them at startup via \`skills/gmail_auth/handler.py\`.
 
 ## Conventions
 
-- `skills/` are stateless, independently testable units. No polling logic inside them.
-- `agents/local_worker.py` owns the loop, IMAP connection, and skill orchestration.
-- Use `imaplib` for Gmail (IMAP/IDLE), `requests` for Uber API, `twilio` for SMS.
+- \`skills/\` are stateless, independently testable units. No polling logic inside them.
+- \`agents/local_worker.py\` owns the loop, IMAP connection, and skill orchestration.
+- Use \`imaplib\` for Gmail (IMAP/IDLE), \`requests\` for Uber API, \`twilio\` for SMS.
 - No boto3 or AWS SDK — this is a local-first project.
-- Logs go to `logs/stdout.log` and `logs/stderr.log` (managed by launchd).
+- Logs go to \`logs/stdout.log\` and \`logs/stderr.log\` (managed by launchd).
 
 ## Key Config
 
-- Poll interval: 300s (5 min) — defined in `agents/local_worker.py:84`
-- Hardcoded pickup coords: `40.518, -74.412` — update in `local_worker.py:32` as needed
-- Sender filter: `SON_EMAIL` in `local_worker.py:16` — set to actual address before running
+- Poll interval: 300s (5 min) — defined in \`agents/local_worker.py\`
+- Hardcoded pickup coords: \`40.5482, -74.3444\` (JP Stevens HS)
+- Sender filter: \`SON_EMAIL\` — defined in \`core/settings.py\`

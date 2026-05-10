@@ -1,78 +1,81 @@
 import imaplib
 import email
 import time
+import asyncio
+from typing import Optional
 
+# Core SarabiLabs Imports
+from core import settings, logger, sarabilabs_monitor
+from scripts.check_session import is_session_valid
+
+# Skill Imports
 from skills.email_parser.handler import EmailParser
 from skills.ride_request.handler import UberSkill
 from skills.notifier.handler import sms_notifier
 from skills.notifier.mac_alert import MacNotifier
 from skills.email_reply.handler import send_confirmation
 
-import keyring
 
-import asyncio  # Added for Playwright async support
+class UberAgent:
+    def __init__(self):
+        logger.info(f"Booting SarabiLabs Agent on {settings.SERVICE_NAME}")
 
-from core import settings, logger, sarabilabs_monitor
-from scripts.check_session import is_session_valid  # Import your check
+        self.uber = UberSkill()
+        # Retrieve secrets once at startup to fail-fast
+        self.gmail_pass = settings.get_keychain_secret()
+        self.son_phone = settings.get_keychain_secret(key_name="son_phone")
 
+    @sarabilabs_monitor
+    def process_ride_intent(self, body: str):
+        """Extracts intent and executes the ride request."""
+        ride_time = EmailParser.extract_time(body)
 
-SERVICE = "SarabiLabs_Uber_Automator"
-GMAIL_USER = "panchaldineshb@gmail.com"
-SON_EMAIL = "3016203@edison.k12.nj.us"
+        if not ride_time:
+            print("[DEBUG] No valid ride time found in email body.")
+            return
 
-
-GMAIL_PASS = keyring.get_password(SERVICE, "gmail_app_password")
-if GMAIL_PASS is None:
-    raise RuntimeError("Gmail app password not found in keyring")
-
-
-def process_ride_intent(body):
-    SON_PHONE = keyring.get_password(SERVICE, "son_phone")
-
-    if not SON_PHONE:
-        raise RuntimeError("SON_PHONE not found in Keychain. Run 'make seed-secrets'.")
-
-    ride_time = EmailParser.extract_time(body)
-    if ride_time:
         ride_time_str = ride_time.strftime("%I:%M %p")
 
-        uber = UberSkill()
-        success = uber.request_ride(ride_time, 40.518, -74.412)
+        # Coordinates for JP Stevens High School
+        # Using settings or hardcoded constants for safety
+        success = self.uber.request_ride(ride_time, 40.5482, -74.3444)
 
         if success:
-            send_confirmation(SON_EMAIL, ride_time_str)
+            send_confirmation(settings.SON_EMAIL, ride_time_str)
             sms_notifier.send_confirmation(
-                SON_PHONE,
-                f"Uber booked for {ride_time_str}. Check your email for driver details.",
+                self.son_phone,
+                f"Uber booked for {ride_time_str}. Check email for driver info.",
             )
-            MacNotifier.notify_admin("SarabiLabs", f"Uber booked for {ride_time_str}")
-        else:
-            print(f"Failed to book Uber ride for {ride_time_str}.")
-
-
-def poll_and_process():
-    # PRE-FLIGHT: warn if Uber session looks expired, but don't block email polling
-    try:
-        if not asyncio.run(is_session_valid()):
-            print("[WARN] Uber session may be expired. Run 'make auth' to refresh.")
             MacNotifier.notify_admin(
-                "SarabiLabs", "Action Required: Run 'make auth' to refresh Uber login."
+                "SarabiLabs", f"SUCCESS: Uber booked for {ride_time_str}"
             )
-    except Exception as e:
-        print(f"[WARN] Session check failed ({e}), continuing poll.")
+        else:
+            # This raise will be caught by @sarabilabs_monitor and email you
+            raise RuntimeError(f"Uber API failed to confirm ride for {ride_time_str}")
 
-    try:
+    def check_uber_health(self):
+        """Pre-flight check: warn if session is stale."""
+        try:
+            if not asyncio.run(is_session_valid()):
+                msg = "Uber session expired. Run 'make auth' now."
+                print(f"[WARN] {msg}")
+                MacNotifier.notify_admin("SarabiLabs", msg)
+        except Exception as e:
+            print(f"[WARN] Health check skipped: {e}")
+
+    @sarabilabs_monitor
+    def poll_gmail(self):
+        """Connects to Gmail and processes unread messages from Sameer."""
         mail = imaplib.IMAP4_SSL("imap.gmail.com")
-        mail.login(GMAIL_USER, GMAIL_PASS)
+        mail.login(settings.GMAIL_USER, self.gmail_pass)
         mail.select("inbox")
 
-        # Search for unread emails from your son
-        status, messages = mail.search(None, f'(UNSEEN FROM "{SON_EMAIL}")')
+        # Search specifically for unread emails from the authorized sender
+        status, messages = mail.search(None, f'(UNSEEN FROM "{settings.SON_EMAIL}")')
 
         for num in messages[0].split():
             _, data = mail.fetch(num, "(RFC822)")
-            raw_email = data[0][1].decode("utf-8")
-            msg = email.message_from_string(raw_email)
+            msg = email.message_from_bytes(data[0][1])
 
             body = ""
             if msg.is_multipart():
@@ -82,16 +85,26 @@ def poll_and_process():
             else:
                 body = msg.get_payload(decode=True).decode()
 
-            process_ride_intent(body)
+            self.process_ride_intent(body)
 
         mail.close()
         mail.logout()
-    except Exception as e:
-        print(f"Error: {e}")
+
+
+def run_agent():
+    print(f"--- SarabiLabs Agent Starting [{settings.SERVICE_NAME}] ---")
+    agent = UberAgent()
+
+    while True:
+        # 1. Health Check
+        agent.check_uber_health()
+
+        # 2. Poll and Process
+        agent.poll_gmail()
+
+        # 3. Wait (Default 5 mins)
+        time.sleep(300)
 
 
 if __name__ == "__main__":
-    print("SarabiLabs Local Ride Agent Active. Polling every 5 minutes...")
-    while True:
-        poll_and_process()
-        time.sleep(300)  # 5 Minute interval
+    run_agent()

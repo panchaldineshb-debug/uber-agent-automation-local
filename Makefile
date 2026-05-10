@@ -97,7 +97,7 @@ reload: unload setup load ## Full cycle: Unload, regenerate config, and restart
 status: ## Check if the service is running
 	launchctl list | grep $(SERVICE_NAME) || echo "Service not running."
 
-seed-secrets: ## Interactively set Google, Twilio, and Contact secrets
+seed-secrets: ## Interactively set Google, Twilio, Uber, and Contact secrets
 	@read -p "Enter Google Client ID: " g_id; \
 	read -p "Enter Google Client Secret: " g_secret; \
 	read -p "Enter Gmail App Password: " g_app_pass; \
@@ -105,15 +105,16 @@ seed-secrets: ## Interactively set Google, Twilio, and Contact secrets
 	read -p "Enter Twilio Auth Token: " t_token; \
 	read -p "Enter Twilio Phone Number: " t_phone; \
 	read -p "Enter Sameer's Phone Number: " s_phone; \
+	read -p "Enter Uber Server Token: " u_token; \
 	uv run python -c "\
 import keyring; s='SarabiLabs_Uber_Automator'; \
-pairs = [('google_client_id','$$g_id'),('google_client_secret','$$g_secret'),('gmail_app_password','$$g_app_pass'),('twilio_sid','$$t_sid'),('twilio_token','$$t_token'),('twilio_phone','$$t_phone'),('son_phone','$$s_phone')]; \
+pairs = [('google_client_id','$$g_id'),('google_client_secret','$$g_secret'),('gmail_app_password','$$g_app_pass'),('twilio_sid','$$t_sid'),('twilio_token','$$t_token'),('twilio_phone','$$t_phone'),('son_phone','$$s_phone'),('uber_server_token','$$u_token')]; \
 [keyring.set_password(s,k,v) for k,v in pairs if v.strip()]; \
 print('Secrets updated (blank entries skipped).')"; \
 
 check: ## Compact Keychain credential verification
 	@uv run python -c "import keyring; s='SarabiLabs_Uber_Automator'; \
-	print('Keychain Status:', {k: '✅' for k in ['google_client_id', 'google_client_secret', 'google_refresh_token', 'twilio_sid', 'twilio_token', 'twilio_phone', 'son_phone'] if keyring.get_password(s, k)})"
+	print('Keychain Status:', {k: '✅' for k in ['google_client_id', 'google_client_secret', 'google_refresh_token', 'gmail_app_password', 'twilio_sid', 'twilio_token', 'twilio_phone', 'son_phone', 'uber_server_token'] if keyring.get_password(s, k)})"
 
 check-twilio: ## Print Twilio secrets from Keychain (masked)
 	uv run python3 -c "\

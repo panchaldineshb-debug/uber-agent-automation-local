@@ -1,40 +1,51 @@
 import os
-import subprocess
 from pathlib import Path
-from pydantic import Field, EmailStr
+from pydantic import EmailStr
 from pydantic_settings import BaseSettings, SettingsConfigDict
+from dotenv import load_dotenv
 
-# Base Directory of the project
+# 1. Resolve Path and Load .env
 BASE_DIR = Path(__file__).resolve().parent.parent
+load_dotenv(BASE_DIR / ".env")
 
-class Settings(BaseSettings):
-    # Constants from .env
-    SERVICE_NAME: str = Field(default="SarabiLabs_Uber_Automator")
-    GMAIL_USER: EmailStr
-    SON_EMAIL: EmailStr
-    
-    # Paths
-    UBER_STATE_FILE: Path = BASE_DIR / "config" / "uber_state.json"
-    LOG_DIR: Path = BASE_DIR / "logs"
+# 2. Fetch and Validate Presence (Type Guarding)
+# We pull the values into local variables first
+_gmail_user = os.getenv("GMAIL_USER")
+_son_email = os.getenv("SON_EMAIL")
 
-    # Pydantic will automatically look for a .env file
-    model_config = SettingsConfigDict(
-        env_file=BASE_DIR / ".env",
-        extra="ignore"
+# Brutal Logic: If these are None, the app is fundamentally broken.
+# Raising an error here satisfies Pylance because it knows the code
+# won't reach the 'Settings' call if the values are None.
+if _gmail_user is None or _son_email is None:
+    missing = []
+    if not _gmail_user:
+        missing.append("GMAIL_USER")
+    if not _son_email:
+        missing.append("SON_EMAIL")
+    raise EnvironmentError(
+        f"CRITICAL: Missing required .env variables: {', '.join(missing)}"
     )
 
-    def get_keychain_secret(self) -> str:
-        """
-        Brutal DevOps Logic: Fetch the secret directly from macOS Keychain.
-        This ensures 100% local privacy.
-        """
-        try:
-            command = f"security find-generic-password -w -s {self.SERVICE_NAME}"
-            secret = subprocess.check_output(command, shell=True).decode("utf-8").strip()
-            return secret
-        except subprocess.CalledProcessError:
-            # This triggers your @sarabilabs_monitor decorator if used in agents
-            raise RuntimeError(f"Secret for {self.SERVICE_NAME} not found in Keychain.")
 
-# Global instance to be imported elsewhere
-settings = Settings()
+class Settings(BaseSettings):
+    GMAIL_USER: EmailStr
+    SON_EMAIL: EmailStr
+    SERVICE_NAME: str = "SarabiLabs_Uber_Automator"
+
+    # Paths derived from BASE_DIR
+    LOG_DIR: Path = BASE_DIR / "logs"
+    UBER_STATE_FILE: Path = BASE_DIR / "config" / "uber_state.json"
+
+    model_config = SettingsConfigDict(extra="ignore")
+
+    def get_keychain_secret(self, key_name: str = "gmail_app_password") -> str:
+        import keyring
+        secret = keyring.get_password(self.SERVICE_NAME, key_name)
+        if secret is None:
+            raise RuntimeError(f"Keychain entry '{self.SERVICE_NAME}/{key_name}' not found.")
+        return secret
+
+
+# 3. Explicit Initialization
+# Pylance now sees that _gmail_user and _son_email MUST be strings
+settings = Settings(GMAIL_USER=_gmail_user, SON_EMAIL=_son_email)
