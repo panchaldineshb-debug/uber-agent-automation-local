@@ -2,11 +2,13 @@ import asyncio
 import os
 from datetime import datetime
 from playwright.async_api import async_playwright
+from core.monitoring import sarabilabs_monitor
 
 STATE_PATH = "config/uber_state.json"
 MAX_SESSION_AGE_DAYS = 7
 
 
+@sarabilabs_monitor
 def _session_file_fresh(state_path: str) -> bool:
     try:
         age_days = (datetime.now().timestamp() - os.stat(state_path).st_mtime) / 86400
@@ -15,13 +17,16 @@ def _session_file_fresh(state_path: str) -> bool:
         return False
 
 
+@sarabilabs_monitor
 async def is_session_valid(state_path: str = STATE_PATH) -> bool:
     if not os.path.exists(state_path):
         print("[CHECK] Session file missing — run 'make uber-login'.")
         return False
 
     if not _session_file_fresh(state_path):
-        print(f"[CHECK] Session older than {MAX_SESSION_AGE_DAYS} days — run 'make uber-login'.")
+        print(
+            f"[CHECK] Session older than {MAX_SESSION_AGE_DAYS} days — run 'make uber-login'."
+        )
         return False
 
     async with async_playwright() as p:
@@ -45,7 +50,9 @@ async def is_session_valid(state_path: str = STATE_PATH) -> bool:
 
             # Uber's React app uses non-link elements for auth prompts — match by text
             try:
-                if await page.get_by_text("Log in", exact=True).is_visible(timeout=2000):
+                if await page.get_by_text("Log in", exact=True).is_visible(
+                    timeout=2000
+                ):
                     print("[CHECK] Session EXPIRED — 'Log in' prompt visible.")
                     return False
             except Exception:
@@ -54,7 +61,9 @@ async def is_session_valid(state_path: str = STATE_PATH) -> bool:
             # Positive check: authenticated users have an account chevron in the nav
             # SVG <title> elements are metadata — use count(), not is_visible()
             try:
-                chevron_count = await page.locator('title:text("Chevron down small")').count()
+                chevron_count = await page.locator(
+                    'title:text("Chevron down small")'
+                ).count()
                 if chevron_count == 0:
                     print("[CHECK] Session EXPIRED — account chevron not found.")
                     return False

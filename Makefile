@@ -135,20 +135,20 @@ check-session:
 	@echo "🔍 Testing plist syntax..."
 	@plutil -lint $(PLIST_FILENAME)
 	@echo "🔍 Testing Uber session validity..."
-	uv run python scripts/check_session.py
+	PYTHONPATH=$(CURDIR) uv run python scripts/check_session.py
 
 # =========================
 # Uber Authentication
 # =========================
 
 uber-login:
-	uv run python  scripts/uber_login.py
+	PYTHONPATH=$(CURDIR) uv run python scripts/uber_login.py
 
 uber-run:
-	uv run python  scripts/use_uber_session.py
+	PYTHONPATH=$(CURDIR) uv run python scripts/use_uber_session.py
 
 uber-persistent:
-	uv run python  scripts/persistent_profile.py
+	PYTHONPATH=$(CURDIR) uv run python scripts/persistent_profile.py
 
 
 # =========================
