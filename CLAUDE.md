@@ -78,7 +78,7 @@ uber-agent-automation-local/
 
 ## Secrets & Auth
 
-All secrets live in **macOS Keychain** under service name \`SarabiLabs_Uber_Automator\`. Keys: \`google_client_id\`, \`google_client_secret\`, \`gmail_app_password\`, \`twilio_sid\`, \`twilio_token\`, \`twilio_phone\`, \`son_phone\`, \`uber_server_token\`. Seed them with \`make seed-secrets\`. Never store secrets in \`.env\` or code.
+All secrets live in **macOS Keychain** under service name \`SarabiLabs_Uber_Automator\`. Keys: \`google_client_id\`, \`google_client_secret\`, \`gmail_app_password\`, \`twilio_sid\`, \`twilio_token\`, \`twilio_phone\`, \`son_phone\`, \`uber_server_token\`, \`home_address\`. Seed them with \`make seed-secrets\`. Never store secrets in \`.env\` or code.
 
 Google OAuth tokens are written to disk by \`scripts/auth_setup.py\` (one-time browser flow). The worker reads them at startup via \`skills/gmail_auth/handler.py\`.
 

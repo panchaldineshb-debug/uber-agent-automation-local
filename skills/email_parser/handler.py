@@ -1,10 +1,14 @@
 import email
 import re
 from datetime import datetime, timedelta
+from typing import Optional
 
 class EmailParser:
     @staticmethod
-    def extract_time(raw_email_body: str):
+    def extract_time(raw_email_body: str) -> Optional[datetime]:
+        """
+        Parses dismissal windows (2:35 or 4:00) from email body.
+        """
         # Look for 2:35 or 4 PM (EST)
         time_pattern = r"(\d{1,2}(?::\d{2})?)\s*(?:PM|AM|pm|am)?"
         match = re.search(time_pattern, raw_email_body)

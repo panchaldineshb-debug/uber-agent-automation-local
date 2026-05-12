@@ -106,15 +106,16 @@ seed-secrets: ## Interactively set Google, Twilio, Uber, and Contact secrets
 	read -p "Enter Twilio Phone Number: " t_phone; \
 	read -p "Enter Sameer's Phone Number: " s_phone; \
 	read -p "Enter Uber Server Token: " u_token; \
+	read -p "Enter Home Address (e.g. 123 Main St, Edison NJ 08820): " h_addr; \
 	uv run python -c "\
 import keyring; s='SarabiLabs_Uber_Automator'; \
-pairs = [('google_client_id','$$g_id'),('google_client_secret','$$g_secret'),('gmail_app_password','$$g_app_pass'),('twilio_sid','$$t_sid'),('twilio_token','$$t_token'),('twilio_phone','$$t_phone'),('son_phone','$$s_phone'),('uber_server_token','$$u_token')]; \
+pairs = [('google_client_id','$$g_id'),('google_client_secret','$$g_secret'),('gmail_app_password','$$g_app_pass'),('twilio_sid','$$t_sid'),('twilio_token','$$t_token'),('twilio_phone','$$t_phone'),('son_phone','$$s_phone'),('uber_server_token','$$u_token'),('home_address','$$h_addr')]; \
 [keyring.set_password(s,k,v) for k,v in pairs if v.strip()]; \
 print('Secrets updated (blank entries skipped).')"; \
 
 check: ## Compact Keychain credential verification
 	@uv run python -c "import keyring; s='SarabiLabs_Uber_Automator'; \
-	print('Keychain Status:', {k: '✅' for k in ['google_client_id', 'google_client_secret', 'google_refresh_token', 'gmail_app_password', 'twilio_sid', 'twilio_token', 'twilio_phone', 'son_phone', 'uber_server_token'] if keyring.get_password(s, k)})"
+	print('Keychain Status:', {k: '✅' for k in ['google_client_id', 'google_client_secret', 'google_refresh_token', 'gmail_app_password', 'twilio_sid', 'twilio_token', 'twilio_phone', 'son_phone', 'uber_server_token', 'home_address'] if keyring.get_password(s, k)})"
 
 check-twilio: ## Print Twilio secrets from Keychain (masked)
 	uv run python3 -c "\
