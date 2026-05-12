@@ -19,4 +19,5 @@ dependencies = [
     "jaraco-context==6.1.2",
     "jaraco-functools==4.4.0",
     "pytz==2026.2",
+    "geopy>=2.4.0",
 ]

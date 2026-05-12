@@ -2,6 +2,7 @@ import email
 import re
 from datetime import datetime, timedelta
 from typing import Optional
+from core.geocoder import validate_edison_nj
 
 class EmailParser:
     @staticmethod
@@ -28,6 +29,21 @@ class EmailParser:
             hour = 0
 
         return datetime.now().replace(hour=hour, minute=minute, second=0, microsecond=0)
+
+    @staticmethod
+    def extract_address(raw_email_body: str) -> Optional[str]:
+        # Match patterns like "123 Main St, Edison" or "123 Main Street Edison NJ"
+        match = re.search(
+            r'\d+\s+[A-Za-z0-9\s]+(?:St|Street|Ave|Avenue|Rd|Road|Dr|Drive|Blvd|Ln|Lane)[,\s]+[A-Za-z\s]+(?:NJ|New Jersey)?',
+            raw_email_body,
+            re.IGNORECASE,
+        )
+        if not match:
+            return None
+        address = match.group(0).strip()
+        if not validate_edison_nj(address):
+            return None
+        return address
 
     @staticmethod
     def calculate_token_count(conversation):

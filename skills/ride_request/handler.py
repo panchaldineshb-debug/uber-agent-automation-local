@@ -1,15 +1,17 @@
 import re
+import os
 import asyncio
 from datetime import datetime
 from playwright.async_api import async_playwright, TimeoutError as PWTimeout
 import keyring
+from core.geocoder import get_coordinates, validate_edison_nj
 
 SERVICE_NAME = "SarabiLabs_Uber_Automator"
 STATE_PATH = "config/uber_state.json"
+SCHOOL_ADDRESS = "855 Grove Ave, Edison, NJ 08820"
 
-# JP Stevens High School, Edison NJ
-PICKUP_LAT = 40.5482
-PICKUP_LON = -74.3444
+HEADLESS = os.environ.get("UBER_HEADLESS", "true").lower() != "false"
+DRY_RUN = os.environ.get("UBER_DRY_RUN", "false").lower() == "true"
 
 
 def _get_home_address() -> str:
@@ -25,12 +27,21 @@ async def _book_ride_async(pickup_time: datetime, state_path: str) -> bool:
     home_address = _get_home_address()
     time_label = pickup_time.strftime("%-I:%M %p")
 
+    if not validate_edison_nj(SCHOOL_ADDRESS):
+        print(f"[RIDE] Pickup outside Edison NJ — aborting: {SCHOOL_ADDRESS!r}")
+        return False
+    if not validate_edison_nj(home_address):
+        print(f"[RIDE] Dropoff outside Edison NJ — aborting: {home_address!r}")
+        return False
+
+    pickup_lat, pickup_lon = get_coordinates(SCHOOL_ADDRESS)
+    print(f"[RIDE] Pickup coords: {pickup_lat:.4f}, {pickup_lon:.4f}")
+
     async with async_playwright() as p:
-        browser = await p.chromium.launch(headless=True)
+        browser = await p.chromium.launch(headless=HEADLESS)
         context = await browser.new_context(
             storage_state=state_path,
-            # Spoof geolocation to JP Stevens so Uber auto-detects pickup
-            geolocation={"latitude": PICKUP_LAT, "longitude": PICKUP_LON},
+            geolocation={"latitude": pickup_lat, "longitude": pickup_lon},
             permissions=["geolocation"],
         )
         page = await context.new_page()
@@ -40,8 +51,7 @@ async def _book_ride_async(pickup_time: datetime, state_path: str) -> bool:
             await page.wait_for_load_state("domcontentloaded", timeout=15000)
             await page.wait_for_timeout(3000)
 
-            # --- Step 1: Click the dropoff/destination input ---
-            # Uber mobile web uses "Dropoff location" or "Where are you going?"
+            # --- Step 1: Find destination input ---
             dest_input = page.locator(
                 "input[placeholder*='Dropoff'], "
                 "input[placeholder*='Where are you going'], "
@@ -49,7 +59,6 @@ async def _book_ride_async(pickup_time: datetime, state_path: str) -> bool:
                 "input[placeholder*='Where to']"
             ).first
             if not await dest_input.is_visible(timeout=4000):
-                # Fallback: click the visible "Get a ride" button first, then find input
                 get_ride = page.get_by_text("Get a ride", exact=False)
                 if await get_ride.is_visible(timeout=3000):
                     await get_ride.click()
@@ -58,7 +67,7 @@ async def _book_ride_async(pickup_time: datetime, state_path: str) -> bool:
             await dest_input.fill(home_address)
             await page.wait_for_timeout(2000)
 
-            # --- Step 3: Pick first autocomplete suggestion ---
+            # --- Step 2: Pick first autocomplete suggestion ---
             suggestion = page.locator("[data-testid='search-result']").first
             if await suggestion.is_visible(timeout=3000):
                 await suggestion.click()
@@ -66,7 +75,7 @@ async def _book_ride_async(pickup_time: datetime, state_path: str) -> bool:
                 await dest_input.press("Enter")
             await page.wait_for_timeout(2000)
 
-            # --- Step 4: Schedule (not ride now) ---
+            # --- Step 3: Schedule (not ride now) ---
             schedule_btn = page.get_by_text("Schedule", exact=False)
             if await schedule_btn.is_visible(timeout=3000):
                 await schedule_btn.click()
@@ -84,11 +93,14 @@ async def _book_ride_async(pickup_time: datetime, state_path: str) -> bool:
                     await set_btn.click()
                 await page.wait_for_timeout(1000)
 
-            # --- Step 5: Confirm ride ---
+            # --- Step 4: Confirm ride ---
             confirm_btn = page.get_by_role(
                 "button", name=re.compile(r"confirm|request uber|book", re.I)
             )
             if await confirm_btn.is_visible(timeout=5000):
+                if DRY_RUN:
+                    print(f"[RIDE] DRY RUN — confirm button found, skipping click for {time_label}")
+                    return True
                 await confirm_btn.click()
                 await page.wait_for_timeout(3000)
                 print(f"[RIDE] Booking submitted for {time_label}")
@@ -109,5 +121,5 @@ async def _book_ride_async(pickup_time: datetime, state_path: str) -> bool:
 
 class UberSkill:
     def request_ride(self, pickup_time: datetime, lat: float, lon: float) -> bool:
-        # lat/lon kept for interface compatibility; geolocation is injected via Playwright
+        # lat/lon kept for interface compatibility; coords now derived from SCHOOL_ADDRESS
         return asyncio.run(_book_ride_async(pickup_time, STATE_PATH))
