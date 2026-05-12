@@ -1,38 +1,72 @@
 import asyncio
 import os
+from datetime import datetime
 from playwright.async_api import async_playwright
 
+STATE_PATH = "config/uber_state.json"
+MAX_SESSION_AGE_DAYS = 7
 
-async def is_session_valid(state_path="config/uber_state.json"):
+
+def _session_file_fresh(state_path: str) -> bool:
+    try:
+        age_days = (datetime.now().timestamp() - os.stat(state_path).st_mtime) / 86400
+        return age_days < MAX_SESSION_AGE_DAYS
+    except OSError:
+        return False
+
+
+async def is_session_valid(state_path: str = STATE_PATH) -> bool:
     if not os.path.exists(state_path):
-        print("[CHECK] Session file missing.")
+        print("[CHECK] Session file missing — run 'make uber-login'.")
+        return False
+
+    if not _session_file_fresh(state_path):
+        print(f"[CHECK] Session older than {MAX_SESSION_AGE_DAYS} days — run 'make uber-login'.")
         return False
 
     async with async_playwright() as p:
-        # Launch headless to be fast and invisible
         browser = await p.chromium.launch(headless=True)
-        # Load the saved state
         context = await browser.new_context(storage_state=state_path)
         page = await context.new_page()
 
         try:
-            # Go to the 'Looking' page (the main logged-in dashboard)
-            await page.goto("https://m.uber.com/looking", timeout=15000)
+            await page.goto("https://m.uber.com/looking", timeout=30000)
+            # Uber's SPA never reaches networkidle — wait for DOM then settle
+            await page.wait_for_load_state("domcontentloaded", timeout=15000)
+            await page.wait_for_timeout(4000)
 
-            # Wait a moment for redirects
-            await page.wait_for_load_state("networkidle")
+            url = page.url
+            print("[CHECK] url:", url)
 
-            # Check the URL: If it contains 'login' or 'auth', the session is dead
-            current_url = page.url
-            if "auth.uber.com" in current_url or "login" in current_url:
-                print("[CHECK] Session EXPIRED. Re-authentication required.")
+            # Hard expired: redirected to auth
+            if "auth.uber.com" in url or "/login" in url:
+                print("[CHECK] Session EXPIRED — redirected to login.")
                 return False
 
-            print("[CHECK] Session is VALID. Ready to book rides.")
+            # Uber's React app uses non-link elements for auth prompts — match by text
+            try:
+                if await page.get_by_text("Log in", exact=True).is_visible(timeout=2000):
+                    print("[CHECK] Session EXPIRED — 'Log in' prompt visible.")
+                    return False
+            except Exception:
+                pass
+
+            # Positive check: authenticated users have an account chevron in the nav
+            # SVG <title> elements are metadata — use count(), not is_visible()
+            try:
+                chevron_count = await page.locator('title:text("Chevron down small")').count()
+                if chevron_count == 0:
+                    print("[CHECK] Session EXPIRED — account chevron not found.")
+                    return False
+            except Exception:
+                print("[CHECK] Session EXPIRED — account chevron lookup failed.")
+                return False
+
+            print("[CHECK] Session VALID.")
             return True
 
         except Exception as e:
-            print(f"[CHECK] Error during verification: {e}")
+            print(f"[CHECK] Error during session check: {e}")
             return False
         finally:
             await browser.close()
