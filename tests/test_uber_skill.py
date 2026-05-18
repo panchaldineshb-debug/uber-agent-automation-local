@@ -1,5 +1,5 @@
 import pytest
-from unittest.mock import patch
+from unittest.mock import patch, AsyncMock
 from datetime import datetime
 
 
@@ -20,7 +20,7 @@ def test_request_ride_returns_true_on_success():
         reload(mod)
         skill = mod.UberSkill()
 
-    with patch("skills.ride_request.handler.asyncio.run", return_value=True):
+    with patch("skills.ride_request.handler._book_ride_async", new=AsyncMock(return_value=True)):
         result = skill.request_ride(datetime.now(), 40.5482, -74.3444)
 
     assert result is True
@@ -33,7 +33,7 @@ def test_request_ride_returns_false_on_failure():
         reload(mod)
         skill = mod.UberSkill()
 
-    with patch("skills.ride_request.handler.asyncio.run", return_value=False):
+    with patch("skills.ride_request.handler._book_ride_async", new=AsyncMock(return_value=False)):
         result = skill.request_ride(datetime.now(), 40.5482, -74.3444)
 
     assert result is False
@@ -46,7 +46,7 @@ def test_request_ride_uses_state_path():
         reload(mod)
         skill = mod.UberSkill()
 
-    with patch("skills.ride_request.handler.asyncio.run", return_value=True) as mock_run:
+    with patch("skills.ride_request.handler._book_ride_async", new=AsyncMock(return_value=True)) as mock_fn:
         skill.request_ride(datetime.now(), 40.5482, -74.3444)
 
-    assert mock_run.called
+    assert mock_fn.called
