@@ -1,6 +1,6 @@
 .PHONY: help install local-dev setup load unload reload status clean auth auth-init
 .PHONY: uber-login uber-run uber-persistent uber-test
-.PHONY: check check-twilio check-launchctl
+.PHONY: check check-twilio check-launchctl check-daemons
 .PHONY: seed-secrets
 .PHONY: test
 .PHONY: logs
@@ -113,6 +113,10 @@ pairs = [('google_client_id','$$g_id'),('google_client_secret','$$g_secret'),('g
 [keyring.set_password(s,k,v) for k,v in pairs if v.strip()]; \
 print('Secrets updated (blank entries skipped).')"; \
 
+# =========================
+# Uber check(s)
+# =========================
+
 check: ## Compact Keychain credential verification
 	@uv run python -c "import keyring; s='SarabiLabs_Uber_Automator'; \
 	print('Keychain Status:', {k: '✅' for k in ['google_client_id', 'google_client_secret', 'google_refresh_token', 'gmail_app_password', 'twilio_sid', 'twilio_token', 'twilio_phone', 'son_phone', 'uber_server_token', 'home_address'] if keyring.get_password(s, k)})"
@@ -130,6 +134,12 @@ check-launchctl: ## Dry run of the launchd configuration
 	@echo "🔍 Testing path existence..."
 	@ls $(UV_PYTHON) > /dev/null && echo "✅ Python path valid"
 	@ls $(CURDIR)/$(WORKER) > /dev/null && echo "✅ Worker script valid"
+
+check-daemons: ## Check whether deamon scripts are valid
+	@echo "🔍 Testing plist syntax..."
+	@plutil -lint $(PLIST_FILENAME)
+	@echo "🔍 Testing Uber daemons validity..."
+	PYTHONPATH=$(CURDIR) uv run python scripts/check_daemons.py
 
 check-session:
 	@echo "🔍 Testing plist syntax..."
