@@ -2,7 +2,11 @@
 
 My son Sameer needs Uber ride from his school everyday either at 2:35 or 4 PM EST (Inside JP Steven School, Edison, NJ 08820), what can he do by sending email so that claude code skills and agents can help him, be simple, honest and highly technical.
 
-Polls Gmail for ride-request emails from a designated sender, parses the intended ride time, calls the Uber API, and sends SMS + macOS notifications.
+Polls Gmail for ride-request emails from a designated sender, parses the intended ride time, automates Uber booking via Playwright browser session, and sends SMS + macOS notifications.
+
+Sameer sends an email (WhatsApp planned, not implemented) to trigger a ride from school at 2:35 or 4 PM EST (JP Stevens HS, Edison, NJ 08820).
+
+All rides are restricted to Edison, NJ zip codes {08817, 08820, 08837, 08899} via geocoder bounding box. Max 2 rides per day (not yet enforced in code).
 
 Runs as a macOS \`launchd\` service on an M4 Mac.
 
@@ -24,7 +28,8 @@ uber-agent-automation-local/
 │       ├── __init__.py
 │       ├── settings.py
 │       ├── logger.py
-│       └── monitoring.py
+│       ├── monitoring.py
+│       └── geocoder.py
 │
 ├── Agent Layer
 │   └── agents/
@@ -43,6 +48,8 @@ uber-agent-automation-local/
 │   │   ├── email_reply/
 │   │   │   └── handler.py
 │   │   ├── gmail_auth/
+│   │   │   └── handler.py
+│   │   ├── gmail_precheck/
 │   │   │   └── handler.py
 │
 ├── Scripts / Ops Tools
@@ -86,12 +93,12 @@ Google OAuth tokens are written to disk by \`scripts/auth_setup.py\` (one-time b
 
 - \`skills/\` are stateless, independently testable units. No polling logic inside them.
 - \`agents/local_worker.py\` owns the loop, IMAP connection, and skill orchestration.
-- Use \`imaplib\` for Gmail (IMAP/IDLE), \`requests\` for Uber API, \`twilio\` for SMS.
+- Use \`imaplib\` for Gmail (IMAP/IDLE), \`playwright\` for Uber browser automation, \`twilio\` for SMS.
 - No boto3 or AWS SDK — this is a local-first project.
 - Logs go to \`logs/stdout.log\` and \`logs/stderr.log\` (managed by launchd).
 
 ## Key Config
 
 - Poll interval: 300s (5 min) — defined in \`agents/local_worker.py\`
-- Hardcoded pickup coords: \`40.5482, -74.3444\` (JP Stevens HS)
+- Pickup coords: resolved dynamically via Nominatim geocoder from \`SCHOOL_ADDRESS = "855 Grove Ave, Edison, NJ 08820"\` in \`ride_request/handler.py\` + \`core/geocoder.py\`
 - Sender filter: \`SON_EMAIL\` — defined in \`core/settings.py\`
