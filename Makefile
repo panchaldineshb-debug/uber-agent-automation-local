@@ -1,5 +1,5 @@
 .PHONY: help install local-dev setup load unload reload status clean auth auth-init
-.PHONY: uber-login uber-run uber-persistent uber-test
+.PHONY: uber-login uber-run uber-persistent uber-test uber-eta
 .PHONY: check check-twilio check-launchctl check-daemons
 .PHONY: seed-secrets
 .PHONY: test
@@ -150,6 +150,9 @@ check-session:
 # =========================
 # Uber Authentication
 # =========================
+
+uber-eta: ## Fetch Uber ETAs for school→home (headless=off for visibility)
+	PYTHONPATH=$(CURDIR) UBER_HEADLESS=false uv run python scripts/uber_eta.py
 
 uber-test: ## Live browser test of ride booking (headless=off, dry-run=on — no real booking)
 	PYTHONPATH=$(CURDIR) UBER_HEADLESS=false UBER_DRY_RUN=true uv run python scripts/test_ride.py

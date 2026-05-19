@@ -49,21 +49,20 @@ async def _book_ride_async(pickup_time: datetime, state_path: str) -> bool:
         try:
             await page.goto("https://m.uber.com/looking", timeout=30000)
             await page.wait_for_load_state("domcontentloaded", timeout=15000)
-            await page.wait_for_timeout(3000)
+            await page.wait_for_timeout(4000)
+            print(f"[RIDE] Page URL after load: {page.url}")
 
-            # --- Step 1: Find destination input ---
-            dest_input = page.locator(
-                "input[placeholder*='Dropoff'], "
-                "input[placeholder*='Where are you going'], "
-                "input[placeholder*='Destination'], "
-                "input[placeholder*='Where to']"
-            ).first
-            if not await dest_input.is_visible(timeout=4000):
-                get_ride = page.get_by_text("Get a ride", exact=False)
-                if await get_ride.is_visible(timeout=3000):
-                    await get_ride.click()
-                    await page.wait_for_timeout(2000)
-                dest_input = page.get_by_role("searchbox").last
+            # Dismiss any cookie/promo banners
+            for banner_text in ("Got it", "Opt out"):
+                btn = page.get_by_text(banner_text, exact=True)
+                if await btn.is_visible(timeout=1000):
+                    await btn.click()
+                    await page.wait_for_timeout(500)
+
+            # --- Step 1: Fill destination — Uber uses role="combobox" inputs ---
+            # Two comboboxes: [0]=pickup, [1]=destination
+            dest_input = page.locator('input[role="combobox"]').last
+            await dest_input.wait_for(state="visible", timeout=8000)
             await dest_input.fill(home_address)
             await page.wait_for_timeout(2000)
 
@@ -110,9 +109,17 @@ async def _book_ride_async(pickup_time: datetime, state_path: str) -> bool:
             return False
 
         except PWTimeout as e:
+            try:
+                await page.screenshot(path="logs/ride_timeout.png")
+            except Exception:
+                pass
             print(f"[RIDE] Timeout: {e}")
             return False
         except Exception as e:
+            try:
+                await page.screenshot(path="logs/ride_error.png")
+            except Exception:
+                pass
             print(f"[RIDE] Error: {e}")
             return False
         finally:

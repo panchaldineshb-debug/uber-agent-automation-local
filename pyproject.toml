@@ -20,6 +20,7 @@ dependencies = [
     "jaraco-functools==4.4.0",
     "pytz==2026.2",
     "geopy>=2.4.0",
+    "pytest-cov>=7.1.0",
 ]
 
 [build-system]
@@ -28,3 +29,6 @@ build-backend = "hatchling.build"
 
 [tool.hatch.build.targets.wheel]
 packages = ["core", "agents", "skills", "scripts"]
+
+[tool.pytest.ini_options]
+addopts = "--cov=/Users/panchaldineshb/Public/Sameer/uber-agent-automation-local/ --cov-report=term-missing --cov-report=html"

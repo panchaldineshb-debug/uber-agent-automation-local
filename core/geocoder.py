@@ -15,7 +15,7 @@ _geolocator = Nominatim(user_agent="sarabilabs_uber_agent")
 
 def get_coordinates(address: str) -> tuple[float, float]:
     try:
-        location = _geolocator.geocode(address)
+        location = _geolocator.geocode(address, addressdetails=True)
         if not location:
             raise ValueError(f"Address not found: {address!r}")
         return (location.latitude, location.longitude)
@@ -25,17 +25,14 @@ def get_coordinates(address: str) -> tuple[float, float]:
 
 def validate_edison_nj(address: str) -> bool:
     try:
-        lat, lon = get_coordinates(address)
+        location = _geolocator.geocode(address, exactly_one=True, addressdetails=True)
+        if not location:
+            return False
+        lat, lon = location.latitude, location.longitude
         b = _EDISON_BOUNDS
         if not (b["lat_min"] <= lat <= b["lat_max"] and b["lon_min"] <= lon <= b["lon_max"]):
             return False
-
-        # Check zip code
-        location = _geolocator.geocode(address, exactly_one=True)
-        if location:
-            zip_code = location.raw.get('address', {}).get('postcode')
-            if zip_code in _EDISON_ZIP_CODES:
-                return True
+        zip_code = location.raw.get("address", {}).get("postcode", "")
+        return zip_code in _EDISON_ZIP_CODES
     except Exception:
-        pass
-    return False
+        return False
