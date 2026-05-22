@@ -13,6 +13,8 @@ from skills.notifier.handler import sms_notifier
 from skills.notifier.mac_alert import MacNotifier
 from skills.email_reply.handler import send_confirmation, send_failure
 from skills.gmail_precheck.handler import check_gmail_available
+from skills.rate_limiter.handler import RateLimiter
+from skills.ride_scheduler.handler import RideScheduler
 
 
 class UberAgent:
@@ -21,6 +23,8 @@ class UberAgent:
         self.uber = UberSkill()
         self.gmail_pass = settings.get_keychain_secret()
         self.son_phone = settings.get_keychain_secret(key_name="son_phone")
+        self.rate_limiter = RateLimiter()
+        self.ride_scheduler = RideScheduler()
 
     def process_ride_intent(self, body: str) -> None:
         ride_time = EmailParser.extract_time(body)
@@ -31,6 +35,19 @@ class UberAgent:
             raise RuntimeError(msg)
 
         ride_time_str = ride_time.strftime("%-I:%M %p")
+
+        if not self.ride_scheduler.is_allowed_time(ride_time):
+            next_slot = self.ride_scheduler.format_slot(self.ride_scheduler.next_allowed_slot())
+            msg = f"Requested time {ride_time_str} not in allowed slots (2:35 PM / 4:00 PM ±10 min). Next slot: {next_slot}"
+            logger.warning(f"[worker] {msg}")
+            send_failure(settings.SON_EMAIL, ride_time_str, reason=msg)
+            return
+
+        if not self.rate_limiter.can_book():
+            msg = f"Daily ride limit reached ({self.rate_limiter.today_count()}/2). No more rides today."
+            logger.warning(f"[worker] {msg}")
+            send_failure(settings.SON_EMAIL, ride_time_str, reason=msg)
+            return
 
         try:
             success = self.uber.request_ride(ride_time, 40.5482, -74.3444)
@@ -45,6 +62,7 @@ class UberAgent:
             raise
 
         if success:
+            self.rate_limiter.record_booking()
             send_confirmation(settings.SON_EMAIL, ride_time_str)
             sms_notifier.send_confirmation(
                 self.son_phone,
